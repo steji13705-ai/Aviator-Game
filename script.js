@@ -4,7 +4,7 @@ const socket = io({
 });
 
 // Balance & Betting Variables
-let userBalance = 971; // Default balance, dynamically loaded if updated
+let userBalance = 971;
 let currentBet = 0;
 let isBetPlaced = false;
 
@@ -12,8 +12,6 @@ let isBetPlaced = false;
 const multiplierText = document.querySelector('.main-card h1') || document.querySelector('h1');
 const balanceDisplay = document.querySelector('.main-card span, #balance') || document.body;
 const betInput = document.querySelector('input[type="number"]') || document.querySelectorAll('input')[1];
-const betBtn = document.querySelector('.btn-success, #betBtn') || document.querySelector('button');
-const cashOutBtn = document.querySelector('.btn-danger, #cashOutBtn') || document.querySelectorAll('button')[1];
 
 // Socket Connection Status
 socket.on('connect', () => {
@@ -34,35 +32,29 @@ socket.on('gameCrashed', (finalMultiplier) => {
         multiplierText.innerText = 'CRASHED AT ' + finalMultiplier + 'x';
         multiplierText.style.color = '#ff4d4d';
     }
-    
-    // Reset state for next round
     isBetPlaced = false;
 });
 
-// Optional: Bet Placement Event Handler
-if (betBtn) {
-    betBtn.addEventListener('click', () => {
-        const amount = parseFloat(betInput ? betInput.value : 0);
-        if (amount > 0 && amount <= userBalance) {
-            currentBet = amount;
-            userBalance -= amount;
-            isBetPlaced = true;
-            console.log(`Bet placed: $${amount}`);
-            
-            socket.emit('placeBet', { amount });
-        } else {
-            alert('ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਬੈੱਟ ਰਕਮ ਭਰੋ!');
-        }
-    });
+// Fix for inline onclick="startGame()" in index.html
+function startGame() {
+    const amount = parseFloat(betInput ? betInput.value : 10);
+    if (amount > 0 && amount <= userBalance) {
+        currentBet = amount;
+        userBalance -= amount;
+        isBetPlaced = true;
+        console.log(`Bet placed: $${amount}`);
+        
+        socket.emit('placeBet', { amount });
+    } else {
+        alert('ਕਿਰਪਾ ਕਰਕੇ ਸਹੀ ਬੈੱਟ ਰਕਮ ਭਰੋ!');
+    }
 }
 
-// Optional: Cash Out Event Handler
-if (cashOutBtn) {
-    cashOutBtn.addEventListener('click', () => {
-        if (isBetPlaced) {
-            socket.emit('cashOut');
-            isBetPlaced = false;
-            console.log('Cashed out successfully!');
-        }
-    });
+// Fix for inline onclick="cashOut()" in index.html
+function cashOut() {
+    if (isBetPlaced) {
+        socket.emit('cashOut');
+        isBetPlaced = false;
+        console.log('Cashed out successfully!');
+    }
 }
