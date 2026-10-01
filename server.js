@@ -13,9 +13,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// MongoDB Connection (Local MongoDB)
-mongoose.connect('mongodb://127.0.0.1:27017/aviatorGame')
-    .then(() => console.log('✅ MongoDB Connected Solution'))
+// MongoDB Connection (Cloud Atlas + Local Fallback)
+const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/aviatorGame';
+
+mongoose.connect(mongoURI)
+    .then(() => console.log('✅ MongoDB Connected Successfully'))
     .catch(err => console.log('❌ MongoDB Error:', err));
 
 // User Schema
