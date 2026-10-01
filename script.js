@@ -4,14 +4,9 @@ const socket = io({
 });
 
 // Balance & Betting Variables
-let userBalance = 971;
+let userBalance = 1000;
 let currentBet = 0;
 let isBetPlaced = false;
-
-// UI Elements Selection
-const multiplierText = document.querySelector('.main-card h1') || document.querySelector('h1');
-const balanceDisplay = document.querySelector('.main-card span, #balance') || document.body;
-const betInput = document.querySelector('input[type="number"]') || document.querySelectorAll('input')[1];
 
 // Socket Connection Status
 socket.on('connect', () => {
@@ -20,24 +15,49 @@ socket.on('connect', () => {
 
 // Real-time Multiplier Update from Server
 socket.on('updateMultiplier', (multiplier) => {
-    if (multiplierText) {
-        multiplierText.innerText = multiplier + 'x';
-        multiplierText.style.color = '#ffffff';
+    // 1. ਲੱਭੋ ਕਿ ਸਕ੍ਰੀਨ 'ਤੇ 1.00x ਕਿੱਥੇ ਲਿਖਿਆ ਹੈ
+    const allH1 = document.querySelectorAll('h1');
+    const allDivs = document.querySelectorAll('div');
+    
+    let targetElement = null;
+
+    // ਚੈੱਕ ਕਰੋ ਕਿ ਕਿਹੜੀ ਜਗ੍ਹਾ 'x' ਲਿਖਿਆ ਆ ਰਿਹਾ ਹੈ
+    allH1.forEach(el => {
+        if (el.innerText.includes('x')) targetElement = el;
+    });
+
+    if (!targetElement) {
+        allDivs.forEach(el => {
+            if (el.children.length === 0 && el.innerText.includes('x')) {
+                targetElement = el;
+            }
+        });
+    }
+
+    // 2. ਮਲਟੀਪਲਾਇਰ ਅੱਪਡੇਟ ਕਰੋ
+    if (targetElement) {
+        targetElement.innerText = multiplier + 'x';
+        targetElement.style.color = '#ffffff';
     }
 });
 
 // Game Crash Event from Server
 socket.on('gameCrashed', (finalMultiplier) => {
-    if (multiplierText) {
-        multiplierText.innerText = 'CRASHED AT ' + finalMultiplier + 'x';
-        multiplierText.style.color = '#ff4d4d';
-    }
+    const allH1 = document.querySelectorAll('h1');
+    allH1.forEach(el => {
+        if (el.innerText.includes('x')) {
+            el.innerText = 'CRASHED AT ' + finalMultiplier + 'x';
+            el.style.color = '#ff4d4d';
+        }
+    });
     isBetPlaced = false;
 });
 
 // Fix for inline onclick="startGame()" in index.html
 function startGame() {
+    const betInput = document.querySelector('input[type="number"]') || document.querySelectorAll('input')[0];
     const amount = parseFloat(betInput ? betInput.value : 10);
+    
     if (amount > 0 && amount <= userBalance) {
         currentBet = amount;
         userBalance -= amount;
