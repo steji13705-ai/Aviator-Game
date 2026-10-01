@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io Setup
 const io = new Server(server, {
     cors: { origin: "*" },
     transports: ['websocket', 'polling']
@@ -26,20 +25,19 @@ mongoose.connect(mongoURI)
 // Game State Variables
 let multiplier = 1.00;
 let isGameRunning = false;
+let activeBets = {}; // Active bets track ਕਰਨ ਲਈ
 
 function startGameLoop() {
     if (isGameRunning) return;
     isGameRunning = true;
     multiplier = 1.00;
+    activeBets = {}; // Reset bets for new round
 
-    // Random Crash Point
     const crashPoint = (Math.random() * 4 + 1.2).toFixed(2);
-    console.log(`🚀 New Round Started! Crash Point: ${crashPoint}x`);
+    console.log(`🚀 Round Started! Crash at: ${crashPoint}x`);
 
     const interval = setInterval(() => {
         multiplier = parseFloat((multiplier + 0.01).toFixed(2));
-        
-        // Broadcast multiplier to ALL clients
         io.emit('updateMultiplier', multiplier.toFixed(2));
 
         if (multiplier >= crashPoint) {
@@ -48,33 +46,46 @@ function startGameLoop() {
             console.log(`💥 Crashed at: ${multiplier}x`);
             isGameRunning = false;
 
-            // Wait 3 seconds and start new round
             setTimeout(startGameLoop, 3000);
         }
     }, 100);
 }
 
-// Socket Connection Logic
 io.on('connection', (socket) => {
-    console.log('⚡ New Client Connected:', socket.id);
-    
-    // Immediately start loop on first connection if not already running
+    console.log('⚡ Client Connected:', socket.id);
+
     if (!isGameRunning) {
         startGameLoop();
     }
 
+    // Bet Handle ਕਰੋ
     socket.on('placeBet', (data) => {
-        console.log(`Bet received from ${socket.id}:`, data);
+        activeBets[socket.id] = {
+            amount: data.amount,
+            cashedOut: false
+        };
+        console.log(`💰 Bet placed by ${socket.id}: $${data.amount}`);
+        socket.emit('betConfirmed', { amount: data.amount });
     });
 
+    // Cash Out Handle ਕਰੋ
     socket.on('cashOut', () => {
-        console.log(`Cashout received from ${socket.id}`);
+        if (activeBets[socket.id] && !activeBets[socket.id].cashedOut && isGameRunning) {
+            activeBets[socket.id].cashedOut = true;
+            const winAmount = (activeBets[socket.id].amount * multiplier).toFixed(2);
+            
+            console.log(`🎉 Cashout by ${socket.id} at ${multiplier}x! Win: $${winAmount}`);
+            
+            socket.emit('cashOutSuccess', {
+                multiplier: multiplier.toFixed(2),
+                winAmount: winAmount
+            });
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    // Auto start game loop when server boots up
     startGameLoop();
 });
